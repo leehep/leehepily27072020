@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import './App.css';
+import FirstTask from './components/FirstTask';
 
 function App() {
   return (
-    <div className="App">
-      
+    <div >
+      <FirstTask/>
     </div>
   );
 }
