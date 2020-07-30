@@ -5,10 +5,14 @@ import CardActions from '@material-ui/core/CardActions';
 import Collapse from '@material-ui/core/Collapse';
 import Card from '@material-ui/core/Card';
 import TextField from '@material-ui/core/TextField';
+import Axios from 'axios';
+import moment from 'moment';
 
 import { AgGridReact } from 'ag-grid-react';
 import 'ag-grid-community/dist/styles/ag-grid.css';
 import 'ag-grid-community/dist/styles/ag-theme-alpine.css';
+
+const DATA_URL='https://servergrid.herokuapp.com/'
 
 export default function FirestTask(){
   const [columnDefs,setColumnDefs] = React.useState();
@@ -16,44 +20,36 @@ export default function FirestTask(){
   const [gridApi,setGridApi] = React.useState();
   const [openAddUser,setOpenAddUser] = React.useState(false);
   const [userData,setUserData] = React.useState({});
+  
+  const [defaultColDef] = React.useState({
+    sortable: true,
+    flex:1
+  })
 
   const handelInputChange = e =>{
     e.persist();
     setUserData(userData=>({...userData,[e.target.name]:e.target.value}))
   }
 
-  const createNewRowData=()=>{
-
-    var newData = {
-      name: userData.name||"no data",
-      date: '27/8/2020',
-      show: userData.show||"no data",
-      tickets: userData.tickets||"no data",
-    };
-
-    return newData;
-  }
-
   useEffect(()=>{
-    const columnCountData=[
-      { field: 'name' },
-      { field: 'date' },
-      { field: 'show' },
-      { field: 'tickets' },
-    ];
+    Axios.get(DATA_URL)
+      .then((res)=>{
+        setRowData(res.data)
+      })
+      .catch((err)=>{
+        console.log(err)
+    })
 
-    const rowData = [
-      {
-        name: 'Lilo',
-        date: '27/8/2020',
-        show: 'meow',
-        tickets: 20,
-      },
+    const columnCountData=[
+      { field: 'name' ,sortable: true},
+      { field: 'date' ,sortable: true},
+      { field: 'show' ,sortable: true},
+      { field: 'tickets' ,unSortIcon: true},
     ];
-    
-    setRowData(rowData);
     setColumnDefs(columnCountData);
   },[])
+
+  
 
   const handleExpandClick = () => {
     setOpenAddUser(!openAddUser);
@@ -63,12 +59,42 @@ export default function FirestTask(){
     setGridApi(params.api);
   };
 
+  
+
   const addItems = () => {
-    gridApi.applyTransaction({add:[createNewRowData()]});
+
+    let newData = {
+      name: userData.name||"no data",
+      date: moment().format('DD/MM/YYYY'),
+      show: userData.show||"no data",
+      tickets: userData.tickets||"no data",
+    };
+
+    Axios.post(DATA_URL+"postUserData",newData)
+      .then((res)=>{
+        console.log(res.data)
+      })
+      .catch((err)=>{
+        console.log(err)
+      })
+
+    gridApi.applyTransaction({add:[newData]});
   };
 
   const onRemoveSelected = () => {
+    const rowData=[];
     gridApi.applyTransaction({ remove: gridApi.getSelectedRows() });
+    
+    gridApi.forEachNode(function(node) {
+      rowData.push(node.data);
+    });
+
+    Axios.post(DATA_URL+"removeUserData",rowData)
+      .then((res)=>{
+      })
+      .catch((err)=>{
+        console.log(err)
+      })
   };
 
 
@@ -84,30 +110,24 @@ export default function FirestTask(){
                 <Button onClick={() => onRemoveSelected()}>Remove Selected</Button>
               </CardActions>
               <Collapse in={openAddUser} timeout="auto" unmountOnExit>
-                <CardContent>
+                <CardContent style={{display:'flex',justifyContent:'space-between'}}>
                   <TextField 
                     autoFocus={true} 
-                    id="standard-basic" 
                     name="name"
                     label="Name" 
-                    style={{marginRight:10}}
                     onChange={handelInputChange}
                     value={userData.name||''}
                   />
                   <TextField 
-                    id="standard-basic" 
                     name="show"
                     label="Show Name" 
-                    style={{marginRight:10}}
                     onChange={handelInputChange}
                     value={userData.show||''}
                   />
                   <TextField 
-                    id="standard-basic" 
                     name="tickets"
                     label="Tickets" 
                     type="number"
-                    style={{marginRight:10}}
                     InputProps={{
                       inputProps: { 
                         min: 1,
@@ -134,7 +154,7 @@ export default function FirestTask(){
               <AgGridReact
                 rowData={rowData}
                 columnDefs={columnDefs}
-                defaultColDef={'flex: 1'}
+                defaultColDef={defaultColDef}
                 rowSelection='multiple'
                 animateRows={true}
                 onGridReady={onGridReady}
