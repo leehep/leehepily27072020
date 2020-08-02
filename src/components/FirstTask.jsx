@@ -1,25 +1,40 @@
 import React, { useEffect } from 'react';
-import Button from '@material-ui/core/Button';
-import CardContent from '@material-ui/core/CardContent';
-import CardActions from '@material-ui/core/CardActions';
-import Collapse from '@material-ui/core/Collapse';
-import Card from '@material-ui/core/Card';
-import TextField from '@material-ui/core/TextField';
+import {
+  MenuItem,
+  Button,
+  CardContent,
+  CardActions,
+  Collapse,
+  Card,
+  TextField,
+  Select,
+  InputLabel,
+  FormHelperText,
+  FormControl,
+} from '@material-ui/core';
+
 import Axios from 'axios';
 import moment from 'moment';
 
 import { AgGridReact } from 'ag-grid-react';
 import 'ag-grid-community/dist/styles/ag-grid.css';
 import 'ag-grid-community/dist/styles/ag-theme-alpine.css';
+import { useDispatch, useSelector } from 'react-redux';
 
-const DATA_URL='https://servergrid.herokuapp.com/'
+
+const DATA_URL='https://servergrid.herokuapp.com/';
+const SHOW_LIST = ["Hamilton","Mika","K's choice","Amanda Palmer"];
 
 export default function FirestTask(){
+  const dispatch = useDispatch();
   const [columnDefs,setColumnDefs] = React.useState();
   const [rowData,setRowData] = React.useState();
   const [gridApi,setGridApi] = React.useState();
   const [openAddUser,setOpenAddUser] = React.useState(false);
   const [userData,setUserData] = React.useState({});
+  const [showSelect , setShowSelect] = React.useState('');
+  const [showTicket ,setShowTicket] = React.useState('');
+  const showTicketsList = useSelector(state=>state.showTickets)
   
   const [defaultColDef] = React.useState({
     sortable: true,
@@ -28,7 +43,16 @@ export default function FirestTask(){
 
   const handelInputChange = e =>{
     e.persist();
+    if(e.target.name==="tickets"){
+      setUserData(userData=>({...userData,[e.target.name]:Number(e.target.value)}))
+    }
     setUserData(userData=>({...userData,[e.target.name]:e.target.value}))
+  }
+
+  const handleShowChange = e=>{
+    e.persist();
+    setShowSelect(e.target.value)
+    setShowTicket(showTicketsList[e.target.value])
   }
 
   useEffect(()=>{
@@ -49,8 +73,6 @@ export default function FirestTask(){
     setColumnDefs(columnCountData);
   },[])
 
-  
-
   const handleExpandClick = () => {
     setOpenAddUser(!openAddUser);
   };
@@ -59,14 +81,11 @@ export default function FirestTask(){
     setGridApi(params.api);
   };
 
-  
-
   const addItems = () => {
-
     let newData = {
       name: userData.name||"no data",
       date: moment().format('DD/MM/YYYY'),
-      show: userData.show||"no data",
+      show: showSelect,
       tickets: userData.tickets||"no data",
     };
 
@@ -79,6 +98,18 @@ export default function FirestTask(){
       })
 
     gridApi.applyTransaction({add:[newData]});
+    
+    if(newData.tickets!=='no data'){
+      const changeTickets= {
+        name:newData.show,
+        tickets:newData.tickets
+      }
+      console.log("firest step",changeTickets)
+      dispatch({
+        type:'UPDATE_TICKET',
+        payload:changeTickets
+      })
+    }
   };
 
   const onRemoveSelected = () => {
@@ -97,6 +128,9 @@ export default function FirestTask(){
       })
   };
 
+  const selsctShow = SHOW_LIST.map((show,i)=>{
+    return <MenuItem key={i} value={show}>{show}</MenuItem >
+  })
 
   return(
     <div style={{ width: 700, height: '100%' }}>
@@ -118,20 +152,30 @@ export default function FirestTask(){
                     onChange={handelInputChange}
                     value={userData.name||''}
                   />
-                  <TextField 
-                    name="show"
-                    label="Show Name" 
-                    onChange={handelInputChange}
-                    value={userData.show||''}
-                  />
+                  <FormControl>
+                    <InputLabel id="demo-simple-select-required-label">Select Show</InputLabel>
+                    <Select
+                      style = {{width:165}}
+                      value={showSelect}
+                      onChange={handleShowChange}
+                      displayEmpty
+                      inputProps={{ 'aria-label': 'Without label' }}
+                    >
+                      {selsctShow} 
+                    </Select>
+                    <FormHelperText>{showTicket!==''?showTicket:''}</FormHelperText>
+                  </FormControl>
                   <TextField 
                     name="tickets"
                     label="Tickets" 
                     type="number"
                     InputProps={{
                       inputProps: { 
-                        min: 1,
-                        max: 10
+                        min: showTicket!==''?1:0,
+                        max: showTicket!==''?showTicket:0,
+                        onKeyDown: (event) => {
+                          event.preventDefault();
+                       },
                       }
                     }}
                     value={userData.tickets||''}
